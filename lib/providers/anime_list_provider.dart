@@ -35,6 +35,7 @@ class AnimeListProvider extends ChangeNotifier {
 
   Future<bool> trackAnime(Anime anime, AnimeStatus status) async {
     try {
+      final currentList = getListForStatus(status);
       final trackedAnime = TrackedAnime(
         malId: anime.malId,
         title: anime.title,
@@ -42,6 +43,7 @@ class AnimeListProvider extends ChangeNotifier {
         episodes: anime.episodes,
         status: status,
         dateAdded: DateTime.now(),
+        sortOrder: currentList.length,
       );
 
       await _dbService.insertAnime(trackedAnime);
@@ -77,6 +79,37 @@ class AnimeListProvider extends ChangeNotifier {
 
   Future<bool> isAnimeTracked(int malId) async {
     return await _dbService.isAnimeTracked(malId);
+  }
+
+  Future<void> reorderAnime(AnimeStatus status, int oldIndex, int newIndex) async {
+    List<TrackedAnime> list = getListForStatus(status);
+    
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+    
+    final item = list.removeAt(oldIndex);
+    list.insert(newIndex, item);
+    
+    for (int i = 0; i < list.length; i++) {
+      list[i] = list[i].copyWith(sortOrder: i);
+    }
+    
+    await _dbService.updateSortOrders(list);
+    
+    switch (status) {
+      case AnimeStatus.watched:
+        _watchedList = list;
+        break;
+      case AnimeStatus.toWatch:
+        _toWatchList = list;
+        break;
+      case AnimeStatus.dropped:
+        _droppedList = list;
+        break;
+    }
+    
+    notifyListeners();
   }
 
   List<TrackedAnime> getListForStatus(AnimeStatus status) {

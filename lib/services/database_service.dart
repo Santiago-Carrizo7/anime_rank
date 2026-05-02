@@ -23,8 +23,9 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
   }
 
@@ -37,9 +38,16 @@ class DatabaseService {
         image_url TEXT,
         episodes INTEGER,
         status TEXT NOT NULL,
-        date_added TEXT NOT NULL
+        date_added TEXT NOT NULL,
+        sort_order INTEGER
       )
     ''');
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('ALTER TABLE user_animes ADD COLUMN sort_order INTEGER');
+    }
   }
 
   Future<int> insertAnime(TrackedAnime anime) async {
@@ -76,7 +84,7 @@ class DatabaseService {
       'user_animes',
       where: 'status = ?',
       whereArgs: [status.dbValue],
-      orderBy: 'date_added DESC',
+      orderBy: 'sort_order ASC, date_added DESC',
     );
     return maps.map((map) => TrackedAnime.fromMap(map)).toList();
   }
@@ -85,9 +93,23 @@ class DatabaseService {
     final db = await database;
     final maps = await db.query(
       'user_animes',
-      orderBy: 'date_added DESC',
+      orderBy: 'sort_order ASC, date_added DESC',
     );
     return maps.map((map) => TrackedAnime.fromMap(map)).toList();
+  }
+
+  Future<void> updateSortOrders(List<TrackedAnime> animes) async {
+    final db = await database;
+    final batch = db.batch();
+    for (var i = 0; i < animes.length; i++) {
+      batch.update(
+        'user_animes',
+        {'sort_order': i},
+        where: 'mal_id = ?',
+        whereArgs: [animes[i].malId],
+      );
+    }
+    await batch.commit(noResult: true);
   }
 
   Future<TrackedAnime?> getAnimeByMalId(int malId) async {

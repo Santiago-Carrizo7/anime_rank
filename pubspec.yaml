@@ -49,6 +49,9 @@ dependencies:
   # Image Caching
   cached_network_image: ^3.4.1
 
+  # Reorderable Grid
+  reorderable_grid_view: ^2.2.8
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:reorderable_grid_view/reorderable_grid_view.dart';
 import '../models/anime_status.dart';
+import '../models/tracked_anime.dart';
 import '../providers/anime_list_provider.dart';
 import '../widgets/tracked_anime_grid_item.dart';
 
@@ -57,14 +59,17 @@ class _MyListScreenState extends State<MyListScreen> with SingleTickerProviderSt
               _AnimeListView(
                 animes: provider.watchedList,
                 emptyMessage: 'No watched anime yet',
+                status: AnimeStatus.watched,
               ),
               _AnimeListView(
                 animes: provider.toWatchList,
                 emptyMessage: 'No anime in your watch list',
+                status: AnimeStatus.toWatch,
               ),
               _AnimeListView(
                 animes: provider.droppedList,
                 emptyMessage: 'No dropped anime',
+                status: AnimeStatus.dropped,
               ),
             ],
           );
@@ -75,12 +80,14 @@ class _MyListScreenState extends State<MyListScreen> with SingleTickerProviderSt
 }
 
 class _AnimeListView extends StatelessWidget {
-  final List animes;
+  final List<TrackedAnime> animes;
   final String emptyMessage;
+  final AnimeStatus status;
 
   const _AnimeListView({
     required this.animes,
     required this.emptyMessage,
+    required this.status,
   });
 
   @override
@@ -108,7 +115,7 @@ class _AnimeListView extends StatelessWidget {
       );
     }
 
-    return GridView.builder(
+    return ReorderableGridView.builder(
       padding: const EdgeInsets.all(16),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
@@ -120,14 +127,18 @@ class _AnimeListView extends StatelessWidget {
       itemBuilder: (context, index) {
         final anime = animes[index];
         return TrackedAnimeGridItem(
+          key: ValueKey(anime.malId),
           anime: anime,
           onTap: () => _showOptionsSheet(context, anime),
         );
       },
+      onReorder: (oldIndex, newIndex) {
+        context.read<AnimeListProvider>().reorderAnime(status, oldIndex, newIndex);
+      },
     );
   }
 
-  void _showOptionsSheet(BuildContext context, dynamic anime) {
+  void _showOptionsSheet(BuildContext context, TrackedAnime anime) {
     showModalBottomSheet(
       context: context,
       builder: (context) => _OptionsBottomSheet(anime: anime),
@@ -136,7 +147,7 @@ class _AnimeListView extends StatelessWidget {
 }
 
 class _OptionsBottomSheet extends StatelessWidget {
-  final dynamic anime;
+  final TrackedAnime anime;
 
   const _OptionsBottomSheet({required this.anime});
 
